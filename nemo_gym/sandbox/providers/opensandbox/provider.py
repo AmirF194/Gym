@@ -1463,7 +1463,8 @@ class OpenSandboxProvider:
         headers = dict(endpoint.headers)
         if self._connection.api_key:
             headers["OPEN-SANDBOX-API-KEY"] = self._connection.api_key
-        return f"{self._connection.protocol}://{endpoint.endpoint}", headers, request_timeout_s
+        protocol = self._connection.protocol or urlsplit(handle.raw.connection_config.get_base_url()).scheme or "http"
+        return f"{protocol}://{endpoint.endpoint}", headers, request_timeout_s
 
     async def create_pty(self, handle: SandboxHandle, spec: SandboxPtySpec) -> SandboxPtySession:
         """Open an interactive execd PTY session inside a sandbox."""
