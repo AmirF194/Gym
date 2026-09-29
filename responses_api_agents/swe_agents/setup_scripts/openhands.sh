@@ -49,11 +49,11 @@ mamba install -y --override-channels conda-forge::python=3.12 conda-forge::nodej
 
 $miniforge_dir/bin/python -m pip install -q 'packaging==26.0'
 
-# Install jq as a static binary (avoid conda solver changing other package versions)
+# Install jq via conda-forge (arch-independent, no GitHub dependency), as its own mamba call so
+# its dependency set never perturbs the solved versions of python/nodejs/poetry/tmux/git above.
 if [ ! -f "$miniforge_dir/bin/jq" ]; then
-    echo "Installing jq static binary..."
-    curl -fsSL https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 -o "$miniforge_dir/bin/jq"
-    chmod +x "$miniforge_dir/bin/jq"
+    echo "Installing jq..."
+    mamba install -y --override-channels conda-forge::jq
 fi
 
 echo "Verifying jq installation..."
@@ -135,14 +135,18 @@ while [ "$attempt" -le "$MAX_MAKE_BUILD_ATTEMPTS" ]; do
         continue
     fi
 
-    if make build; then
+    if timeout "$MAKE_BUILD_TIMEOUT_SECONDS" make build; then
         echo "make build completed successfully."
         break
     else
         exit_code=$?
     fi
 
-    echo "make build failed on the final attempt with exit code $exit_code."
+    if [ "$exit_code" -eq 124 ]; then
+        echo "make build timed out after $MAKE_BUILD_TIMEOUT_MINUTES minutes on the final attempt."
+    else
+        echo "make build failed on the final attempt with exit code $exit_code."
+    fi
     exit "$exit_code"
 done
 
